@@ -6,7 +6,7 @@ const app = express();
 const port = 3000;
 
 // Configure OpenAI credentials
-openai.apiKey = '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';
+openai.apiKey = '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';
 
 // Configure SQLite database
 const db = new sqlite3.Database(':memory:');
