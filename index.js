@@ -10,4 +10,4 @@ app.get("/outfit", (req, res) => {
     res.send("This is working!!!");
 });
 
-app.listen(3000, () => console.log("API Server is running definitely..."));
+app.listen(3000, () => console.log("API Server is running..."));
