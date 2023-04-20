@@ -1,52 +1,56 @@
-const express = require("express");
+const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
-const openai = require('openai');
+const axios = require('axios');
+
+const db = new sqlite3.Database('./books.db', (err) => {
+    if (err) {
+        console.error(err.message);
+    }
+    console.log('Connected to the books database.');
+});
+
+db.run('CREATE TABLE IF NOT EXISTS books (title TEXT, summary TEXT)');
 
 const app = express();
-const port = 3000;
+app.use(express.json());
 
-// Configure OpenAI credentials
-openai.apiKey = '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';
+app.post('/books', async(req, res) => {
+    const { title } = req.body;
+    const apiUrl = `https://api.openai.com/v1/engines/davinci-codex/completions`;
+    const prompt = `Generate a summary for the book ${title}.`;
+    const data = {
+        prompt,
+        max_tokens: 100,
+        temperature: 0.7,
+        n: 1,
+        stop: '\n',
+    };
 
-// Configure SQLite database
-const db = new sqlite3.Database(':memory:');
-
-// Create table for book summaries
-db.serialize(() => {
-    db.run('CREATE TABLE summaries (id INTEGER PRIMARY KEY, title TEXT, summary TEXT)');
-});
-
-// Route for getting book summaries
-app.get('/summary', (req, res) => {
-    const title = req.query.title;
-
-    // Generate book summary using OpenAI
-    openai.completions.create({
-            engine: 'davinci',
-            prompt: `Generate a summary for the book "${title}".`,
-            maxTokens: 256,
-            n: 1,
-            stop: '\n',
-        })
-        .then((response) => {
-            const summary = response.choices[0].text.trim();
-
-            // Store summary in database
-            db.run('INSERT INTO summaries (title, summary) VALUES (?, ?)', [title, summary], (err) => {
-                if (err) {
-                    console.error(err);
-                    res.status(500).send('Error storing summary in database.');
-                } else {
-                    res.json({ title, summary });
-                }
-            });
-        })
-        .catch((err) => {
-            console.error(err);
-            res.status(500).send('Error generating book summary.');
+    try {
+        const response = await axios.post(apiUrl, data, {
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+            },
         });
+        const summary = response.data.choices[0].text.trim();
+
+        db.run('INSERT INTO books (title, summary) VALUES (?, ?)', [title, summary], (err) => {
+            if (err) {
+                console.error(err.message);
+                res.status(500).send('Failed to save book summary to database.');
+            } else {
+                res.send({ title, summary });
+            }
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).send('Failed to generate book summary.');
+    }
 });
 
-app.listen(port, () => {
-    console.log(`App listening at http://localhost:${port}`);
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+    console.log(`Server listening on port ${PORT}.`);
 });
