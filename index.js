@@ -16,13 +16,13 @@ app.use(express.json());
 
 app.post('/books', async(req, res) => {
     const { title } = req.body;
-    const apiUrl = `https://api.openai.com/v1/engines/davinci-codex/completions`;
+    const apiUrl = `https://api.openai.com/v1/completions`;
     const prompt = `Generate a summary for the book ${title}.`;
     const data = {
+        model: "text-davinci-003",
         prompt,
-        max_tokens: 100,
-        temperature: 0.7,
-        n: 1,
+        max_tokens: 1000,
+        temperature: 0,
         stop: '\n',
     };
 
